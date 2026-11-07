@@ -1,0 +1,8 @@
+name = "diamond-store"
+compatibility_date = "2025-01-01"
+
+# Remplace ce placeholder par l’identifiant de ta base D1 créée dans Cloudflare.
+[[d1_databases]]
+binding = "DB"
+database_name = "diamond-db"
+database_id = "REMPLACER_PAR_ID_D1"
