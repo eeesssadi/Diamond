@@ -99,7 +99,7 @@ export async function onRequest({ request, env }) {
       if (body.primary === true) {
         const product = await db.prepare("SELECT image FROM products WHERE id=?").bind(productId).first();
         if (!product) return json({ error: "Produit introuvable." }, 404);
-        const nextImage = await db.prepare("SELECT id, image FROM product_images WHERE product_id=? ORDER BY position, id LIMIT 1").bind(productId).first();
+        const nextImage = await db.prepare("SELECT id, image FROM product_images WHERE product_id=? AND color='' ORDER BY position, id LIMIT 1").bind(productId).first();
         if (nextImage) {
           await db.batch([
             db.prepare("UPDATE products SET image=? WHERE id=?").bind(nextImage.image, productId),
