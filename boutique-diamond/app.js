@@ -1,7 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const api = "/api";
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-const money = (value) => `${Number(value || 0).toLocaleString("fr-FR")} FCFA`;
+const money = (value) => `${Number(value || 0).toLocaleString("fr-FR")} DH`;
 const cleanUrl = (value) => {
   const imageData = String(value || "");
   if (/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(imageData)) return imageData;
