@@ -22,6 +22,11 @@ async function ensureTables(db) {
       await db.prepare(`ALTER TABLE products ADD COLUMN ${name} ${type}`).run();
     }
   }
+
+  const imageColumns = (await db.prepare("PRAGMA table_info(product_images)").all()).results.map(column => column.name);
+  if (!imageColumns.includes("color")) {
+    await db.prepare("ALTER TABLE product_images ADD COLUMN color TEXT NOT NULL DEFAULT ''").run();
+  }
 }
 
 export async function onRequest({ request, env }) {
@@ -34,13 +39,13 @@ export async function onRequest({ request, env }) {
     const [products, settings, images] = await Promise.all([
       db.prepare("SELECT id, name, price, description, sizes, colors, image, video FROM products ORDER BY id DESC").all(),
       db.prepare("SELECT k, v FROM settings").all(),
-      db.prepare("SELECT id, product_id, image, position FROM product_images ORDER BY product_id, position, id").all()
+      db.prepare("SELECT id, product_id, image, position, color FROM product_images ORDER BY product_id, position, id").all()
     ]);
     const values = Object.fromEntries(settings.results.map(({ k, v }) => [k, v]));
     const imagesByProduct = new Map();
     for (const image of images.results) {
       if (!imagesByProduct.has(image.product_id)) imagesByProduct.set(image.product_id, []);
-      imagesByProduct.get(image.product_id).push({ id: image.id, image: image.image, position: image.position });
+      imagesByProduct.get(image.product_id).push({ id: image.id, image: image.image, position: image.position, color: image.color || "" });
     }
     const productList = products.results.map(product => ({ ...product, images: imagesByProduct.get(product.id) || [] }));
 
