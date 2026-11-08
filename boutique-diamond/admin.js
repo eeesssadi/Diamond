@@ -2,7 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 const api = "/api";
 const KEY_NAME = "diamond_admin_key";
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-const money = (value) => `${Number(value || 0).toLocaleString("fr-FR")} FCFA`;
+const money = (value) => `${Number(value || 0).toLocaleString("fr-FR")} DH`;
 let products = [];
 let key = sessionStorage.getItem(KEY_NAME) || "";
 const setStatus = (message, error = false) => { $("#status").textContent = message; $("#status").classList.toggle("error", error); };
@@ -74,7 +74,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#productForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const id = $("#productId").value;
-    const payload = { action: id ? "update" : "add", id: id ? Number(id) : undefined, name: $("#productName").value, price: $("#productPrice").value, description: $("#productDescription").value, sizes: $("#productSizes").value, image: $("#productImage").value, video: $("#productVideo").value };
+    const currentProduct = id ? products.find(item => Number(item.id) === Number(id)) : null;
+    const payload = { action: id ? "update" : "add", id: id ? Number(id) : undefined, name: $("#productName").value, price: $("#productPrice").value, description: $("#productDescription").value, sizes: $("#productSizes").value, image: $("#productImage").value || currentProduct?.image || "", video: $("#productVideo").value };
     try { await callAdmin(payload); event.target.reset(); resetForm(); await loadAdmin(); setStatus("Produit enregistré."); }
     catch (error) { setStatus(error.message, true); }
   });
