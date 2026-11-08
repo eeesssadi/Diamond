@@ -2,7 +2,11 @@ const $ = (selector) => document.querySelector(selector);
 const api = "/api";
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const money = (value) => `${Number(value || 0).toLocaleString("fr-FR")} FCFA`;
-const cleanUrl = (value) => { try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch { return ""; } };
+const cleanUrl = (value) => {
+  const imageData = String(value || "");
+  if (/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(imageData)) return imageData;
+  try { const url = new URL(value); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch { return ""; }
+};
 
 async function getStore() {
   const response = await fetch(`${api}/store`);
@@ -21,7 +25,7 @@ function renderProducts(products, whatsapp) {
   target.innerHTML = products.map(product => {
     const image = cleanUrl(product.image);
     const sizes = String(product.sizes || "").split(",").map(item => item.trim()).filter(Boolean);
-    return `<article class="product-card"><div class="product-photo">${image ? `<img loading="lazy" src="${safe(image)}" alt="${safe(product.name)}">` : '<div class="photo-placeholder">DIAMOND</div>'}</div><div class="product-info"><div class="product-title"><h3>${safe(product.name)}</h3><span>${safe(money(product.price))}</span></div><p>${safe(product.description || "Une pièce sélectionnée avec soin.")}</p>${sizes.length ? `<div class="sizes">${sizes.map(size => `<span>${safe(size)}</span>`).join("")}</div>` : ""}<a class="button order-button" href="${safe(whatsappUrl(whatsapp, product))}" ${whatsapp ? 'target="_blank" rel="noopener noreferrer"' : ""}>Commander sur WhatsApp <span aria-hidden="true">↗</span></a></div></article>`;
+    return `<article class="product-card"><div class="product-photo">${image ? `<img loading="lazy" src="${safe(image)}" alt="${safe(product.name)}">` : '<div class="photo-placeholder">DIAMOND</div>'}${product.video ? `<video class="product-video" src="${safe(cleanUrl(product.video))}" controls playsinline></video>` : ""}</div><div class="product-info"><div class="product-title"><h3>${safe(product.name)}</h3><strong>${safe(money(product.price))}</strong></div><p>${safe(product.description || "")}</p>${sizes.length ? `<div class="sizes">${sizes.map(size => `<span>${safe(size)}</span>`).join("")}</div>` : ""}<a class="button button-small" href="${safe(whatsappUrl(whatsapp, product))}" ${whatsapp ? 'target="_blank" rel="noopener noreferrer"' : ""}>Commander</a></div></article>`;
   }).join("");
 }
 async function startStore() {

@@ -52,7 +52,8 @@ export async function onRequest({ request, env }) {
         return json({ error: "Indique un nom et un prix valide." }, 400);
       }
       const fields = [name, price, text(body.description), text(body.sizes), text(body.image), text(body.video)];
-      if (fields.some(value => String(value).length > 10000)) return json({ error: "Un champ est trop long." }, 413);
+      if (fields.some((value, index) => index !== 4 && String(value).length > 10000)) return json({ error: "Un champ est trop long." }, 413);
+      if (fields[4].length > 1000000) return json({ error: "La photo est trop volumineuse. Choisis une image plus légère." }, 413);
 
       if (action === "add") {
         await db.prepare("INSERT INTO products(name, price, description, sizes, image, video) VALUES(?, ?, ?, ?, ?, ?)").bind(...fields).run();
