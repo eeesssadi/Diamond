@@ -1,8 +1,7 @@
 name = "diamond-store"
 compatibility_date = "2025-01-01"
+pages_build_output_dir = "."
 
-# Remplace ce placeholder par l’identifiant de ta base D1 créée dans Cloudflare.
-[[d1_databases]]
-binding = "DB"
-database_name = "diamond-db"
-database_id = "REMPLACER_PAR_ID_D1"
+# Le binding D1 est configuré dans Cloudflare Pages (Settings > Functions).
+# Ne déclare pas de base ici sans son vrai database_id : un identifiant fictif
+# rend la configuration Wrangler invalide et ne crée ni ne relie une base.
