@@ -20,4 +20,4 @@ Ouvre `/admin.html`, saisis la valeur du secret `ADMIN_KEY` et enregistre-la. La
 
 ## Important pour Wrangler
 
-`wrangler.toml` ne contient volontairement aucun identifiant D1 fictif. Le binding de production se configure dans le tableau de bord Pages comme décrit ci-dessus. Pour lancer le projet localement avec Wrangler, il faut aussi déclarer dans la configuration locale un binding `DB` avec le vrai `database_id` de ta base et configurer `ADMIN_KEY` comme variable/secrète locale. La création du binding dans le tableau de bord Pages ne crée pas automatiquement une base et ne corrige pas un binding absent. 
+`wrangler.toml` ne contient volontairement aucun identifiant D1 fictif. Le binding de production se configure dans le tableau de bord Pages comme décrit ci-dessus. Pour lancer le projet localement avec Wrangler, il faut aussi déclarer dans la configuration locale un binding `DB` avec le vrai `database_id` de ta base et configurer `ADMIN_KEY` comme variable/secrète locale. La création du binding dans le tableau de bord Pages ne crée pas automatiquement une base et ne corrige pas un binding absent.  
