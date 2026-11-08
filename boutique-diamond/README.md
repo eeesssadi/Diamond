@@ -1,22 +1,23 @@
 # Boutique DIAMOND
 
-Cette boutique est ajoutée dans son propre dossier pour ne pas modifier les fichiers des autres projets : `boutique-diamond/`.
+La boutique se trouve dans `boutique-diamond/`, afin de rester isolée des autres projets du dépôt.
 
-## Mise en ligne avec Cloudflare Pages
+## Déploiement sur Cloudflare Pages
 
-1. Dans Cloudflare Pages, crée un projet lié au dépôt `eeesssadi/Diamond` (ou configure un projet existant sans changer les autres projets).
-2. Dans **Build settings**, choisis `boutique-diamond` comme **Root directory**. Il n’y a pas de commande de build.
-3. Crée une base D1 nommée `diamond-db`.
-4. Dans les paramètres Pages → **Settings → Functions → D1 database bindings**, ajoute le binding `DB` et sélectionne cette base.
-5. Dans les variables d’environnement et secrets du projet Pages, ajoute le secret `ADMIN_KEY` avec une clé longue et unique. Ne mets jamais cette clé dans les fichiers du dépôt et ne la partage pas.
-6. Déploie le projet. La boutique est à `/` et l’administration à `/admin.html`.
+1. Dans Cloudflare, ouvre **Workers & Pages** et crée (ou sélectionne) le projet Pages lié au dépôt `eeesssadi/Diamond`.
+2. Dans **Build settings**, définis `boutique-diamond` comme répertoire racine. Il n’y a pas de commande de build et le répertoire de sortie est `.`.
+3. Dans **Storage & databases > D1**, crée une base de données, par exemple `diamond-db`.
+4. Dans le projet Pages, ouvre **Settings > Functions > D1 database bindings**, ajoute un binding nommé exactement `DB` et sélectionne la base créée. Le nom `DB` doit correspondre à `env.DB` dans les fonctions.
+5. Dans les variables d’environnement et secrets du projet Pages, ajoute `ADMIN_KEY` comme secret avec une valeur longue, aléatoire et unique. Ne l’ajoute jamais au dépôt.
+6. Enregistre les réglages, puis relance un déploiement (un nouveau déploiement est nécessaire pour appliquer les bindings et secrets).
+7. Vérifie `/api/store`, puis ouvre `/` pour la boutique et `/admin.html` pour l’administration.
 
-Les tables sont créées automatiquement au premier appel à `/api/store`. Les images et vidéos doivent être des liens publics commençant par `https://`. Les commandes sont envoyées via WhatsApp ; aucun paiement en ligne n’est configuré.
+Les tables sont créées automatiquement au premier appel à l’API. Les données (produits et réglages) sont enregistrées dans D1. Le code n’utilise pas KV. Les images et vidéos doivent être accessibles par une URL publique `https://`. Les commandes sont envoyées via WhatsApp.
 
-## Utilisation de l’administration
+## Administration
 
-Ouvre `/admin.html`, saisis la valeur secrète de `ADMIN_KEY`, puis enregistre-la. Tu peux ajouter/modifier/supprimer des produits et renseigner le nom, le numéro WhatsApp (avec indicatif international), ainsi que les liens vers tes images/vidéos. La clé reste dans la session du navigateur et n’est pas écrite dans le dépôt.
+Ouvre `/admin.html`, saisis la valeur du secret `ADMIN_KEY` et enregistre-la. La clé est conservée uniquement dans la session du navigateur. Tu peux ensuite ajouter, modifier ou supprimer des produits et régler le nom de la boutique, le numéro WhatsApp et les médias de la page d’accueil.
 
-## Important
+## Important pour Wrangler
 
-Le code de la boutique est isolé dans ce dossier. Le dépôt ne contient pas les identifiants Cloudflare : le binding D1 et le secret doivent être configurés dans le tableau de bord Cloudflare. N’envoie pas de mot de passe, clé secrète ou token dans le chat.
+`wrangler.toml` ne contient volontairement aucun identifiant D1 fictif. Le binding de production se configure dans le tableau de bord Pages comme décrit ci-dessus. Pour lancer le projet localement avec Wrangler, il faut aussi déclarer dans la configuration locale un binding `DB` avec le vrai `database_id` de ta base et configurer `ADMIN_KEY` comme variable/secrète locale. La création du binding dans le tableau de bord Pages ne crée pas automatiquement une base et ne corrige pas un binding absent.
