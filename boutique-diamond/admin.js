@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
     event.preventDefault();
     const id = $("#productId").value;
     const currentProduct = id ? products.find(item => Number(item.id) === Number(id)) : null;
-    const payload = { action: id ? "update" : "add", id: id ? Number(id) : undefined, name: $("#productName").value, price: $("#productPrice").value, description: $("#productDescription").value, sizes: $("#productSizes").value, image: $("#productImage").value || currentProduct?.image || "", video: $("#productVideo").value };
+    const payload = { action: id ? "update" : "add", id: id ? Number(id) : undefined, name: $("#productName").value, price: $("#productPrice").value, description: $("#productDescription").value, sizes: $("#productSizes").value, colors: $("#productColors").value, image: $("#productImage").value || currentProduct?.image || "", video: $("#productVideo").value };
     try { await callAdmin(payload); event.target.reset(); resetForm(); await loadAdmin(); setStatus("Produit enregistré."); }
     catch (error) { setStatus(error.message, true); }
   });
@@ -99,6 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
       $("#productPrice").value = product.price || 0;
       $("#productDescription").value = product.description || "";
       $("#productSizes").value = product.sizes || "";
+      $("#productColors").value = product.colors || "";
       $("#productImage").value = /^https?:\/\//i.test(product.image || "") ? product.image : "";
       $("#productVideo").value = product.video || "";
       $("#productFormTitle").textContent = `Modifier : ${product.name}`;
@@ -118,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!file.type.startsWith("image/")) throw new Error("Choisis un fichier image.");
       setStatus("Réduction et enregistrement de la photo…");
       const image = await resizePhoto(file);
-      await callAdmin({ action: "update", id: Number(product.id), name: product.name, price: product.price, description: product.description || "", sizes: product.sizes || "", image, video: product.video || "" });
+      await callAdmin({ action: "update", id: Number(product.id), name: product.name, price: product.price, description: product.description || "", sizes: product.sizes || "", colors: product.colors || "", image, video: product.video || "" });
       await loadAdmin();
       setStatus("Photo du produit enregistrée.");
     } catch (error) { setStatus(error.message, true); }

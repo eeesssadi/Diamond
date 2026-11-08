@@ -13,6 +13,7 @@ async function ensureTables(db) {
   for (const [name, type] of [
     ["description", "TEXT NOT NULL DEFAULT ''"],
     ["sizes", "TEXT NOT NULL DEFAULT ''"],
+    ["colors", "TEXT NOT NULL DEFAULT ''"],
     ["image", "TEXT NOT NULL DEFAULT ''"],
     ["video", "TEXT NOT NULL DEFAULT ''"]
   ]) {
@@ -30,7 +31,7 @@ export async function onRequest({ request, env }) {
     const db = env.DB;
     await ensureTables(db);
     const [products, settings] = await Promise.all([
-      db.prepare("SELECT id, name, price, description, sizes, image, video FROM products ORDER BY id DESC").all(),
+      db.prepare("SELECT id, name, price, description, sizes, colors, image, video FROM products ORDER BY id DESC").all(),
       db.prepare("SELECT k, v FROM settings").all()
     ]);
     const values = Object.fromEntries(settings.results.map(({ k, v }) => [k, v]));

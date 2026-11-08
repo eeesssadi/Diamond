@@ -13,6 +13,7 @@ async function ensureTables(db) {
   for (const [name, type] of [
     ["description", "TEXT NOT NULL DEFAULT ''"],
     ["sizes", "TEXT NOT NULL DEFAULT ''"],
+    ["colors", "TEXT NOT NULL DEFAULT ''"],
     ["image", "TEXT NOT NULL DEFAULT ''"],
     ["video", "TEXT NOT NULL DEFAULT ''"]
   ]) {
@@ -51,16 +52,16 @@ export async function onRequest({ request, env }) {
       if (!name || !Number.isFinite(price) || price < 0) {
         return json({ error: "Indique un nom et un prix valide." }, 400);
       }
-      const fields = [name, price, text(body.description), text(body.sizes), text(body.image), text(body.video)];
-      if (fields.some((value, index) => index !== 4 && String(value).length > 10000)) return json({ error: "Un champ est trop long." }, 413);
-      if (fields[4].length > 1000000) return json({ error: "La photo est trop volumineuse. Choisis une image plus légère." }, 413);
+      const fields = [name, price, text(body.description), text(body.sizes), text(body.colors), text(body.image), text(body.video)];
+      if (fields.some((value, index) => index !== 5 && String(value).length > 10000)) return json({ error: "Un champ est trop long." }, 413);
+      if (fields[5].length > 1000000) return json({ error: "La photo est trop volumineuse. Choisis une image plus légère." }, 413);
 
       if (action === "add") {
-        await db.prepare("INSERT INTO products(name, price, description, sizes, image, video) VALUES(?, ?, ?, ?, ?, ?)").bind(...fields).run();
+        await db.prepare("INSERT INTO products(name, price, description, sizes, colors, image, video) VALUES(?, ?, ?, ?, ?, ?, ?)").bind(...fields).run();
       } else {
         const id = Number(body.id);
         if (!Number.isInteger(id) || id < 1) return json({ error: "Identifiant de produit invalide." }, 400);
-        await db.prepare("UPDATE products SET name=?, price=?, description=?, sizes=?, image=?, video=? WHERE id=?").bind(...fields, id).run();
+        await db.prepare("UPDATE products SET name=?, price=?, description=?, sizes=?, colors=?, image=?, video=? WHERE id=?").bind(...fields, id).run();
       }
       return json({ ok: true });
     }
