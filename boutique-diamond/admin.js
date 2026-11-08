@@ -1,8 +1,14 @@
 const $ = (selector) => document.querySelector(selector);
 const api = "/api";
 const KEY_NAME = "diamond_admin_key";
+const MAX_PHOTOS_PER_COLOR = 4;
 const safe = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const money = (value) => `${Number(value || 0).toLocaleString("fr-FR")} DH`;
+const splitColors = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return [];
+  return (text.includes(",") ? text.split(",") : text.split(/\s+/)).map(item => item.trim()).filter(Boolean);
+};
 let products = [];
 let key = sessionStorage.getItem(KEY_NAME) || "";
 const setStatus = (message, error = false) => { $("#status").textContent = message; $("#status").classList.toggle("error", error); };
@@ -31,16 +37,30 @@ async function loadAdmin() {
   } catch (error) { setStatus(error.message, true); }
 }
 
+function photoGroups(product) {
+  const colors = splitColors(product.colors);
+  const groups = new Map([["", []]]);
+  colors.forEach(color => groups.set(color, []));
+  if (product.image) groups.get("").push({ image: product.image, primary: true });
+  (product.images || []).forEach(item => {
+    const color = String(item.color || "").trim();
+    if (!groups.has(color)) groups.set(color, []);
+    groups.get(color).push({ image: item.image, id: item.id, primary: false });
+  });
+  return groups;
+}
+
 function renderAdminProducts() {
   const target = $("#adminProducts");
   if (!products.length) { target.innerHTML = '<p class="notice">Aucun produit pour le moment.</p>'; return; }
   target.innerHTML = products.map(product => {
-    const photos = [
-      ...(product.image ? [{ image: product.image, primary: true }] : []),
-      ...(product.images || []).map(image => ({ image: image.image, id: image.id, primary: false }))
-    ];
-    const thumbnails = photos.map(photo => `<div class="admin-photo"><img src="${safe(photo.image)}" alt="Photo de ${safe(product.name)}"><button class="button button-danger" data-remove-image="${Number(product.id)}" ${photo.primary ? 'data-primary="true"' : `data-image-id="${Number(photo.id)}"`} type="button" aria-label="Supprimer cette photo">×</button></div>`).join("");
-    return `<div class="admin-product"><div class="admin-product-details"><strong>${safe(product.name)}</strong><span>${safe(money(product.price))}</span><div class="admin-photos">${thumbnails}</div></div><div class="actions"><button class="button button-quiet" data-photo="${Number(product.id)}" type="button">Choisir une photo</button><button class="button button-quiet" data-edit="${Number(product.id)}" type="button">Modifier</button><button class="button button-danger" data-delete="${Number(product.id)}" type="button">Supprimer</button></div></div>`;
+    const groups = photoGroups(product);
+    const groupsHtml = Array.from(groups.entries()).filter(([, photos]) => photos.length).map(([color, photos]) => {
+      const thumbs = photos.map(photo => `<div class="admin-photo"><img src="${safe(photo.image)}" alt="Photo de ${safe(product.name)}"><button class="button button-danger" data-remove-image="${Number(product.id)}" ${photo.primary ? 'data-primary="true"' : `data-image-id="${Number(photo.id)}"`} type="button" aria-label="Supprimer cette photo">×</button></div>`).join("");
+      return `<div class="admin-photo-group"><span class="admin-photo-label">${safe(color || "Toutes les couleurs")}</span><div class="admin-photos">${thumbs}</div></div>`;
+    }).join("");
+    const colorOptions = ['<option value="">Toutes les couleurs</option>', ...splitColors(product.colors).map(color => `<option value="${safe(color)}">${safe(color)}</option>`)].join("");
+    return `<div class="admin-product"><div class="admin-product-details"><strong>${safe(product.name)}</strong><span>${safe(money(product.price))}</span>${groupsHtml}</div><div class="actions"><select class="photo-color" aria-label="Couleur des photos à ajouter">${colorOptions}</select><button class="button button-quiet" data-photo="${Number(product.id)}" type="button">Choisir une photo</button><button class="button button-quiet" data-edit="${Number(product.id)}" type="button">Modifier</button><button class="button button-danger" data-delete="${Number(product.id)}" type="button">Supprimer</button></div></div>`;
   }).join("");
 }
 
@@ -52,7 +72,7 @@ function resizePhoto(file) {
     const objectUrl = URL.createObjectURL(file);
     image.onload = () => {
       URL.revokeObjectURL(objectUrl);
-      const scale = Math.min(1, 800 / image.naturalWidth);
+      const scale = Math.min(1, 700 / image.naturalWidth);
       const width = Math.max(1, Math.round(image.naturalWidth * scale));
       const height = Math.max(1, Math.round(image.naturalHeight * scale));
       const canvas = document.createElement("canvas");
@@ -61,7 +81,7 @@ function resizePhoto(file) {
       const context = canvas.getContext("2d");
       if (!context) { reject(new Error("Impossible de traiter cette photo.")); return; }
       context.drawImage(image, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
+      resolve(canvas.toDataURL("image/jpeg", 0.75));
     };
     image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Impossible d’ouvrir cette image.")); };
     image.src = objectUrl;
@@ -69,6 +89,10 @@ function resizePhoto(file) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const style = document.createElement("style");
+  style.textContent = ".admin-photo-group{margin-top:8px}.admin-photo-label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.photo-color{padding:9px;border:1px solid var(--line);background:var(--white);font:inherit;font-size:13px;border-radius:3px;max-width:100%}";
+  document.head.append(style);
+
   $("#adminKey").value = key;
   $("#saveKey").addEventListener("click", async () => { key = $("#adminKey").value.trim(); sessionStorage.setItem(KEY_NAME, key); await loadAdmin(); });
   $("#logout").addEventListener("click", () => { key = ""; sessionStorage.removeItem(KEY_NAME); $("#adminKey").value = ""; setStatus("Clé effacée de cette session."); });
@@ -94,7 +118,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const remove = event.target.closest("[data-delete]");
     if (photo) {
       const picker = $("#productPhotoPicker");
+      const select = photo.closest(".admin-product")?.querySelector(".photo-color");
       picker.dataset.productId = photo.dataset.photo;
+      picker.dataset.color = select ? select.value : "";
       picker.value = "";
       picker.click();
       return;
@@ -131,18 +157,23 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!files.length) return;
     const product = products.find(item => Number(item.id) === Number(event.target.dataset.productId));
     if (!product) { setStatus("Produit introuvable. Recharge la boutique et réessaie.", true); return; }
+    const color = String(event.target.dataset.color || "");
+    const label = color || "Toutes les couleurs";
     try {
-      const currentCount = (product.image ? 1 : 0) + (product.images || []).length;
-      const selectedFiles = files.slice(0, Math.max(0, 4 - currentCount));
-      if (!selectedFiles.length) throw new Error("Ce produit a déjà atteint la limite de 4 photos.");
+      const used = color
+        ? (product.images || []).filter(item => String(item.color || "").trim() === color).length
+        : (product.image ? 1 : 0) + (product.images || []).filter(item => !String(item.color || "").trim()).length;
+      const selectedFiles = files.slice(0, Math.max(0, MAX_PHOTOS_PER_COLOR - used));
+      if (!selectedFiles.length) throw new Error(`« ${label} » a déjà 4 photos (maximum).`);
       if (selectedFiles.some(file => !file.type.startsWith("image/"))) throw new Error("Choisis uniquement des fichiers image.");
       setStatus("Réduction et enregistrement des photos…");
       for (const file of selectedFiles) {
         const image = await resizePhoto(file);
-        await callAdmin({ action: "addImage", productId: Number(product.id), image });
+        await callAdmin({ action: "addImage", productId: Number(product.id), image, color });
       }
       await loadAdmin();
-      setStatus(`${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} enregistrée${selectedFiles.length > 1 ? "s" : ""}.`);
+      const ignored = files.length - selectedFiles.length;
+      setStatus(`${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} enregistrée${selectedFiles.length > 1 ? "s" : ""} pour « ${label} ».${ignored > 0 ? ` ${ignored} ignorée${ignored > 1 ? "s" : ""} (maximum 4 par couleur).` : ""}`);
     } catch (error) { setStatus(error.message, true); }
   });
   if (key) loadAdmin();
