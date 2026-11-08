@@ -2,6 +2,7 @@ name = "diamondpro"
 compatibility_date = "2025-01-01"
 pages_build_output_dir = "."
 
-# Le binding D1 est configuré dans Cloudflare Pages (Settings > Functions).
-# Ne déclare pas de base ici sans son vrai database_id : un identifiant fictif
-# rend la configuration Wrangler invalide et ne crée ni ne relie une base.
+[[d1_databases]]
+binding = "DB"
+database_name = "diamond-db"
+database_id = "e1b5ed8b-8f36-4837-8070-3049f8b329ad"
