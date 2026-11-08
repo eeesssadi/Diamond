@@ -3,6 +3,8 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
 });
 
+const MAX_PHOTOS_PER_COLOR = 4;
+
 async function ensureTables(db) {
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL DEFAULT '', price REAL NOT NULL DEFAULT 0, description TEXT NOT NULL DEFAULT '', sizes TEXT NOT NULL DEFAULT '', image TEXT NOT NULL DEFAULT '', video TEXT NOT NULL DEFAULT '')"),
@@ -21,6 +23,11 @@ async function ensureTables(db) {
     if (!columns.includes(name)) {
       await db.prepare(`ALTER TABLE products ADD COLUMN ${name} ${type}`).run();
     }
+  }
+
+  const imageColumns = (await db.prepare("PRAGMA table_info(product_images)").all()).results.map(column => column.name);
+  if (!imageColumns.includes("color")) {
+    await db.prepare("ALTER TABLE product_images ADD COLUMN color TEXT NOT NULL DEFAULT ''").run();
   }
 }
 
@@ -70,14 +77,19 @@ export async function onRequest({ request, env }) {
     if (action === "addImage") {
       const productId = Number(body.productId);
       const image = text(body.image);
+      const color = text(body.color);
       if (!Number.isInteger(productId) || productId < 1) return json({ error: "Identifiant de produit invalide." }, 400);
+      if (color.length > 60) return json({ error: "Le nom de la couleur ne peut pas dépasser 60 caractères." }, 400);
       if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(image) || image.length > 1000000) return json({ error: "La photo doit être un JPEG réduit de moins de 1 Mo." }, 413);
       const product = await db.prepare("SELECT id, image FROM products WHERE id=?").bind(productId).first();
       if (!product) return json({ error: "Produit introuvable." }, 404);
-      const count = await db.prepare("SELECT COUNT(*) AS count FROM product_images WHERE product_id=?").bind(productId).first();
-      if ((product.image ? 1 : 0) + Number(count?.count || 0) >= 4) return json({ error: "Un produit peut avoir au maximum 4 photos." }, 400);
+
+      const count = await db.prepare("SELECT COUNT(*) AS count FROM product_images WHERE product_id=? AND color=?").bind(productId, color).first();
+      const used = Number(count?.count || 0) + (color === "" && product.image ? 1 : 0);
+      if (used >= MAX_PHOTOS_PER_COLOR) return json({ error: "Maximum 4 photos par couleur." }, 400);
+
       const position = await db.prepare("SELECT COALESCE(MAX(position), 0) + 1 AS position FROM product_images WHERE product_id=?").bind(productId).first();
-      await db.prepare("INSERT INTO product_images(product_id, image, position) VALUES(?, ?, ?)").bind(productId, image, Number(position?.position || 1)).run();
+      await db.prepare("INSERT INTO product_images(product_id, image, position, color) VALUES(?, ?, ?, ?)").bind(productId, image, Number(position?.position || 1), color).run();
       return json({ ok: true });
     }
 
