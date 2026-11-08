@@ -6,7 +6,8 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 async function ensureTables(db) {
   await db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL DEFAULT '', price REAL NOT NULL DEFAULT 0, description TEXT NOT NULL DEFAULT '', sizes TEXT NOT NULL DEFAULT '', image TEXT NOT NULL DEFAULT '', video TEXT NOT NULL DEFAULT '')"),
-    db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL DEFAULT '')")
+    db.prepare("CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT NOT NULL DEFAULT '')"),
+    db.prepare("CREATE TABLE IF NOT EXISTS product_images (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, image TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 0)")
   ]);
 
   const columns = (await db.prepare("PRAGMA table_info(products)").all()).results.map(column => column.name);
@@ -30,14 +31,21 @@ export async function onRequest({ request, env }) {
   try {
     const db = env.DB;
     await ensureTables(db);
-    const [products, settings] = await Promise.all([
+    const [products, settings, images] = await Promise.all([
       db.prepare("SELECT id, name, price, description, sizes, colors, image, video FROM products ORDER BY id DESC").all(),
-      db.prepare("SELECT k, v FROM settings").all()
+      db.prepare("SELECT k, v FROM settings").all(),
+      db.prepare("SELECT id, product_id, image, position FROM product_images ORDER BY product_id, position, id").all()
     ]);
     const values = Object.fromEntries(settings.results.map(({ k, v }) => [k, v]));
+    const imagesByProduct = new Map();
+    for (const image of images.results) {
+      if (!imagesByProduct.has(image.product_id)) imagesByProduct.set(image.product_id, []);
+      imagesByProduct.get(image.product_id).push({ id: image.id, image: image.image, position: image.position });
+    }
+    const productList = products.results.map(product => ({ ...product, images: imagesByProduct.get(product.id) || [] }));
 
     return json({
-      products: products.results,
+      products: productList,
       settings: {
         brand: values.brand || "DIAMOND",
         whatsapp: values.whatsapp || "",

@@ -34,7 +34,14 @@ async function loadAdmin() {
 function renderAdminProducts() {
   const target = $("#adminProducts");
   if (!products.length) { target.innerHTML = '<p class="notice">Aucun produit pour le moment.</p>'; return; }
-  target.innerHTML = products.map(product => `<div class="admin-product"><div><strong>${safe(product.name)}</strong><span>${safe(money(product.price))}</span></div><div class="actions"><button class="button button-quiet" data-photo="${Number(product.id)}" type="button">Choisir une photo</button><button class="button button-quiet" data-edit="${Number(product.id)}" type="button">Modifier</button><button class="button button-danger" data-delete="${Number(product.id)}" type="button">Supprimer</button></div></div>`).join("");
+  target.innerHTML = products.map(product => {
+    const photos = [
+      ...(product.image ? [{ image: product.image, primary: true }] : []),
+      ...(product.images || []).map(image => ({ image: image.image, id: image.id, primary: false }))
+    ];
+    const thumbnails = photos.map(photo => `<div class="admin-photo"><img src="${safe(photo.image)}" alt="Photo de ${safe(product.name)}"><button class="button button-danger" data-remove-image="${Number(product.id)}" ${photo.primary ? 'data-primary="true"' : `data-image-id="${Number(photo.id)}"`} type="button" aria-label="Supprimer cette photo">×</button></div>`).join("");
+    return `<div class="admin-product"><div class="admin-product-details"><strong>${safe(product.name)}</strong><span>${safe(money(product.price))}</span><div class="admin-photos">${thumbnails}</div></div><div class="actions"><button class="button button-quiet" data-photo="${Number(product.id)}" type="button">Choisir une photo</button><button class="button button-quiet" data-edit="${Number(product.id)}" type="button">Modifier</button><button class="button button-danger" data-delete="${Number(product.id)}" type="button">Supprimer</button></div></div>`;
+  }).join("");
 }
 
 function resetForm() { $("#productId").value = ""; $("#productFormTitle").textContent = "Ajouter un produit"; }
@@ -82,6 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#cancelEdit").addEventListener("click", () => setTimeout(resetForm));
   $("#adminProducts").addEventListener("click", async (event) => {
     const photo = event.target.closest("[data-photo]");
+    const removeImage = event.target.closest("[data-remove-image]");
     const edit = event.target.closest("[data-edit]");
     const remove = event.target.closest("[data-delete]");
     if (photo) {
@@ -89,6 +97,14 @@ document.addEventListener("DOMContentLoaded", () => {
       picker.dataset.productId = photo.dataset.photo;
       picker.value = "";
       picker.click();
+      return;
+    }
+    if (removeImage) {
+      try {
+        await callAdmin({ action: "deleteImage", productId: Number(removeImage.dataset.removeImage), primary: removeImage.dataset.primary === "true", imageId: Number(removeImage.dataset.imageId) || undefined });
+        await loadAdmin();
+        setStatus("Photo supprimée.");
+      } catch (error) { setStatus(error.message, true); }
       return;
     }
     if (edit) {
@@ -111,17 +127,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   $("#productPhotoPicker").addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
     const product = products.find(item => Number(item.id) === Number(event.target.dataset.productId));
     if (!product) { setStatus("Produit introuvable. Recharge la boutique et réessaie.", true); return; }
     try {
-      if (!file.type.startsWith("image/")) throw new Error("Choisis un fichier image.");
-      setStatus("Réduction et enregistrement de la photo…");
-      const image = await resizePhoto(file);
-      await callAdmin({ action: "update", id: Number(product.id), name: product.name, price: product.price, description: product.description || "", sizes: product.sizes || "", colors: product.colors || "", image, video: product.video || "" });
+      const currentCount = (product.image ? 1 : 0) + (product.images || []).length;
+      const selectedFiles = files.slice(0, Math.max(0, 4 - currentCount));
+      if (!selectedFiles.length) throw new Error("Ce produit a déjà atteint la limite de 4 photos.");
+      if (selectedFiles.some(file => !file.type.startsWith("image/"))) throw new Error("Choisis uniquement des fichiers image.");
+      setStatus("Réduction et enregistrement des photos…");
+      for (const file of selectedFiles) {
+        const image = await resizePhoto(file);
+        await callAdmin({ action: "addImage", productId: Number(product.id), image });
+      }
       await loadAdmin();
-      setStatus("Photo du produit enregistrée.");
+      setStatus(`${selectedFiles.length} photo${selectedFiles.length > 1 ? "s" : ""} enregistrée${selectedFiles.length > 1 ? "s" : ""}.`);
     } catch (error) { setStatus(error.message, true); }
   });
   if (key) loadAdmin();

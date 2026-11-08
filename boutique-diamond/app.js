@@ -38,15 +38,34 @@ function renderProducts(products, whatsapp) {
   const target = $("#products");
   if (!products.length) { target.innerHTML = '<p class="notice">La collection arrive bientôt. Revenez nous voir !</p>'; return; }
   target.innerHTML = products.map((product, index) => {
-    const image = cleanUrl(product.image);
+    const photos = [product.image, ...(product.images || []).map(item => item.image)].map(cleanUrl).filter(Boolean);
+    const photoSlides = photos.length
+      ? photos.map((image, photoIndex) => `<div class="product-photo-slide"><img loading="lazy" src="${safe(image)}" alt="${safe(product.name)}${photoIndex ? ` — photo ${photoIndex + 1}` : ""}"></div>`).join("")
+      : '<div class="product-photo-slide"><div class="photo-placeholder">DIAMOND</div></div>';
     const sizes = String(product.sizes || "").split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
     const colors = String(product.colors || "").split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
     const hasSizes = sizes.length > 0;
     const hasColors = colors.length > 0;
     const needsChoice = hasSizes || hasColors;
     const prompt = hasColors ? "Choisis ta couleur" : hasSizes ? "Choisis ta taille" : "";
-    return `<article class="product-card" data-product-index="${index}"><div class="product-photo">${image ? `<img loading="lazy" src="${safe(image)}" alt="${safe(product.name)}">` : '<div class="photo-placeholder">DIAMOND</div>'}</div><div class="product-info"><div class="product-title"><h3>${safe(product.name)}</h3><span>${safe(money(product.price))}</span></div><p>${safe(product.description || "")}</p>${hasColors ? `<div class="sizes color-options" aria-label="Couleurs disponibles"><span>Couleurs</span>${colors.map(color => `<button class="color-option" type="button" data-color="${safe(color)}" aria-pressed="false">${safe(color)}</button>`).join("")}</div>` : ""}${hasSizes ? `<div class="sizes size-options" aria-label="Tailles disponibles"><span>Tailles</span>${sizes.map(size => `<button class="size-option" type="button" data-size="${safe(size)}" aria-pressed="false">${safe(size)}</button>`).join("")}</div>` : ""}<p class="size-prompt" ${needsChoice ? "" : "hidden"}>${safe(prompt)}</p><button class="button order-button" type="button" ${needsChoice ? "disabled" : ""}>Commander</button></div></article>`;
+    return `<article class="product-card" data-product-index="${index}"><div class="product-photo"><div class="product-photo-track">${photoSlides}</div>${photos.length > 1 ? `<div class="photo-dots" aria-label="Photos du produit">${photos.map((_, photoIndex) => `<span class="photo-dot${photoIndex === 0 ? " is-active" : ""}" aria-hidden="true"></span>`).join("")}</div>` : ""}</div><div class="product-info"><div class="product-title"><h3>${safe(product.name)}</h3><span>${safe(money(product.price))}</span></div><p>${safe(product.description || "")}</p>${hasColors ? `<div class="sizes color-options" aria-label="Couleurs disponibles"><span>Couleurs</span>${colors.map(color => `<button class="color-option" type="button" data-color="${safe(color)}" aria-pressed="false">${safe(color)}</button>`).join("")}</div>` : ""}${hasSizes ? `<div class="sizes size-options" aria-label="Tailles disponibles"><span>Tailles</span>${sizes.map(size => `<button class="size-option" type="button" data-size="${safe(size)}" aria-pressed="false">${safe(size)}</button>`).join("")}</div>` : ""}<p class="size-prompt" ${needsChoice ? "" : "hidden"}>${safe(prompt)}</p><button class="button order-button" type="button" ${needsChoice ? "disabled" : ""}>Commander</button></div></article>`;
   }).join("");
+
+  target.querySelectorAll(".product-photo-track").forEach(track => {
+    const card = track.closest(".product-card");
+    const dots = card.querySelectorAll(".photo-dot");
+    if (dots.length < 2) return;
+    let ticking = false;
+    track.addEventListener("scroll", () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const index = Math.round(track.scrollLeft / track.clientWidth);
+        dots.forEach((dot, dotIndex) => dot.classList.toggle("is-active", dotIndex === index));
+        ticking = false;
+      });
+    }, { passive: true });
+  });
 
   target.addEventListener("click", (event) => {
     const card = event.target.closest(".product-card");
